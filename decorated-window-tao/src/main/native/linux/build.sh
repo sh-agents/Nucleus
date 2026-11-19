@@ -48,14 +48,14 @@ pushd "$NATIVE_DIR" >/dev/null
 case "$HOST_ARCH" in
     x86_64)
         rustup target add x86_64-unknown-linux-gnu >/dev/null
-        cargo build --release --target x86_64-unknown-linux-gnu
+        cargo build --locked --release --target x86_64-unknown-linux-gnu
         cp "target/x86_64-unknown-linux-gnu/release/libnucleus_tao.so" \
            "$OUT_DIR_X64/libnucleus_tao.so"
         strip --strip-unneeded "$OUT_DIR_X64/libnucleus_tao.so" || true
         ;;
     aarch64|arm64)
         rustup target add aarch64-unknown-linux-gnu >/dev/null
-        cargo build --release --target aarch64-unknown-linux-gnu
+        cargo build --locked --release --target aarch64-unknown-linux-gnu
         cp "target/aarch64-unknown-linux-gnu/release/libnucleus_tao.so" \
            "$OUT_DIR_ARM64/libnucleus_tao.so"
         strip --strip-unneeded "$OUT_DIR_ARM64/libnucleus_tao.so" || true

@@ -702,6 +702,14 @@ public class TaoWindow internal constructor(
     public val x11PortalParent: String?
         get() = x11WindowId?.let { xid -> "x11:${xid.toString(radix = 16)}" }
 
+    public val linuxGtkWindowHandle: Long
+        get() =
+            if (Platform.Current == Platform.Linux && NativeTaoBridge.isLoaded) {
+                NativeTaoBridge.nativeLinuxGtkWindow(handle)
+            } else {
+                0L
+            }
+
     /**
      * Linux/Wayland only: export this window via `xdg_foreign` for XDG Desktop
      * Portal dialog parenting (FileKit `FileKitDialogParent.wayland`, portal

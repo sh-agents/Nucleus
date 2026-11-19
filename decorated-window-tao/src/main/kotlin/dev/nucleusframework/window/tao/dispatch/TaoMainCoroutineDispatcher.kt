@@ -92,6 +92,14 @@ internal object ImmediateTaoMainDispatcher : TaoMainCoroutineDispatcher() {
     override val immediate: MainCoroutineDispatcher get() = this
 }
 
+internal object DispatchingTaoMainDispatcher : TaoMainCoroutineDispatcher() {
+    override fun isDispatchNeeded(context: CoroutineContext): Boolean = true
+
+    override val immediate: MainCoroutineDispatcher get() = ImmediateTaoMainDispatcher
+
+    override fun toString(): String = "Dispatchers.Main[Tao, dispatching]"
+}
+
 /**
  * Shared scheduler for [Delay] callbacks. Single daemon thread — Tao's own
  * native timer source isn't exposed at the JVM level, so we rely on a small

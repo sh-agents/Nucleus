@@ -21,7 +21,9 @@ import kotlinx.coroutines.internal.MainDispatcherFactory
  * of both while staying ahead of any reasonable third-party factory.
  *
  * [createDispatcher] is intentionally cheap and side-effect-free: it only
- * returns the [ImmediateTaoMainDispatcher] singleton, with no JNI / native
+ * returns the [DispatchingTaoMainDispatcher] singleton, which dispatches every
+ * block as the Swing dispatcher does and whose `immediate` is
+ * [ImmediateTaoMainDispatcher], with no JNI / native
  * interaction. The Tao runtime is initialised separately by
  * `nucleusApplication { … }`, which captures the main thread reference
  * eagerly via [TaoMainDispatcher.taoMainThread]. This shape is required by
@@ -37,7 +39,7 @@ internal class TaoMainDispatcherFactory : MainDispatcherFactory {
     override val loadPriority: Int = LOAD_PRIORITY
 
     override fun createDispatcher(allFactories: List<MainDispatcherFactory>): MainCoroutineDispatcher =
-        ImmediateTaoMainDispatcher
+        DispatchingTaoMainDispatcher
 
     override fun hintOnError(): String =
         "Tao backend's Dispatchers.Main is not initialised. Either call " +

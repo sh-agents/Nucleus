@@ -14,6 +14,7 @@
 #include "../../../../../native-common/nucleus_jni.h"
 #include <dbus/dbus.h>
 #include <pthread.h>
+#include <stdlib.h>
 #include <string.h>
 
 /* Cached JavaVM pointer, set in JNI_OnLoad */
@@ -201,6 +202,32 @@ static int extract_signal_color_scheme(DBusMessage *msg) {
 /**
  * Monitoring thread: listens for SettingChanged signals on the session bus.
  */
+static char *name_owner(DBusConnection *conn, const char *name) {
+    DBusMessage *call = dbus_message_new_method_call("org.freedesktop.DBus",
+        "/org/freedesktop/DBus", "org.freedesktop.DBus", "GetNameOwner");
+    if (call == NULL) return NULL;
+    if (!dbus_message_append_args(call, DBUS_TYPE_STRING, &name, DBUS_TYPE_INVALID)) {
+        dbus_message_unref(call);
+        return NULL;
+    }
+    DBusError err;
+    dbus_error_init(&err);
+    DBusMessage *reply = dbus_connection_send_with_reply_and_block(conn, call, 1000, &err);
+    dbus_message_unref(call);
+    if (reply == NULL) {
+        dbus_error_free(&err);
+        return NULL;
+    }
+    const char *owner = NULL;
+    char *result = NULL;
+    if (dbus_message_get_args(reply, &err, DBUS_TYPE_STRING, &owner, DBUS_TYPE_INVALID)) {
+        result = strdup(owner);
+    }
+    dbus_error_free(&err);
+    dbus_message_unref(reply);
+    return result;
+}
+
 static void *monitor_thread(void *arg) {
     (void)arg;
     DBusError err;
@@ -216,10 +243,20 @@ static void *monitor_thread(void *arg) {
     /* Subscribe to SettingChanged signal */
     dbus_bus_add_match(g_conn,
         "type='signal',"
+        "sender='org.freedesktop.portal.Desktop',"
         "interface='org.freedesktop.portal.Settings',"
         "member='SettingChanged',"
         "path='/org/freedesktop/portal/desktop'",
         &err);
+    if (!dbus_error_is_set(&err)) {
+        dbus_bus_add_match(g_conn,
+            "type='signal',"
+            "sender='org.freedesktop.DBus',"
+            "interface='org.freedesktop.DBus',"
+            "member='NameOwnerChanged',"
+            "arg0='org.freedesktop.portal.Desktop'",
+            &err);
+    }
     if (dbus_error_is_set(&err)) {
         dbus_error_free(&err);
         dbus_connection_close(g_conn);
@@ -228,6 +265,8 @@ static void *monitor_thread(void *arg) {
         return NULL;
     }
     dbus_connection_flush(g_conn);
+
+    char *portal_owner = name_owner(g_conn, PORTAL_BUS);
 
     /* Dispatch loop */
     while (g_running) {
@@ -238,8 +277,14 @@ static void *monitor_thread(void *arg) {
 
         DBusMessage *msg;
         while ((msg = dbus_connection_pop_message(g_conn)) != NULL) {
-            if (dbus_message_is_signal(msg,
-                    "org.freedesktop.portal.Settings", "SettingChanged")) {
+            const char *sender = dbus_message_get_sender(msg);
+            if (dbus_message_is_signal(msg, "org.freedesktop.DBus", "NameOwnerChanged")
+                    && sender != NULL && strcmp(sender, "org.freedesktop.DBus") == 0) {
+                free(portal_owner);
+                portal_owner = name_owner(g_conn, PORTAL_BUS);
+            } else if (dbus_message_is_signal(msg,
+                    "org.freedesktop.portal.Settings", "SettingChanged")
+                    && sender != NULL && portal_owner != NULL && strcmp(sender, portal_owner) == 0) {
                 int scheme = extract_signal_color_scheme(msg);
                 if (scheme >= 0) {
                     notify_java(scheme == 1 ? JNI_TRUE : JNI_FALSE);
@@ -249,6 +294,7 @@ static void *monitor_thread(void *arg) {
         }
     }
 
+    free(portal_owner);
     dbus_connection_close(g_conn);
     dbus_connection_unref(g_conn);
     g_conn = NULL;

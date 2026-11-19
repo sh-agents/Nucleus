@@ -821,17 +821,17 @@ static void *signal_thread_func(void *arg) {
             on_portal_action_invoked, NULL, NULL);
     } else {
         sub_closed = g_dbus_connection_signal_subscribe(conn,
-            NULL, INTERFACE, "NotificationClosed", OBJECT_PATH,
+            SERVICE_NAME, INTERFACE, "NotificationClosed", OBJECT_PATH,
             NULL, G_DBUS_SIGNAL_FLAGS_NONE,
             on_notification_closed, NULL, NULL);
 
         sub_action = g_dbus_connection_signal_subscribe(conn,
-            NULL, INTERFACE, "ActionInvoked", OBJECT_PATH,
+            SERVICE_NAME, INTERFACE, "ActionInvoked", OBJECT_PATH,
             NULL, G_DBUS_SIGNAL_FLAGS_NONE,
             on_action_invoked, NULL, NULL);
 
         sub_token = g_dbus_connection_signal_subscribe(conn,
-            NULL, INTERFACE, "ActivationToken", OBJECT_PATH,
+            SERVICE_NAME, INTERFACE, "ActivationToken", OBJECT_PATH,
             NULL, G_DBUS_SIGNAL_FLAGS_NONE,
             on_activation_token, NULL, NULL);
     }
